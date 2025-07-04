@@ -11,6 +11,10 @@ V_REF = 220
 DT = 0.1
 Kp = 0.5
 
+# Amplitudes de perturbaciones (modificables)
+amplitud_inductiva = 10
+amplitud_em = -10
+
 # Variables compartidas
 V_in = V_REF
 V_out = V_REF
@@ -61,21 +65,28 @@ def simulador():
 # --- Funciones de UI ---
 def aplicar_perturbacion_inductiva():
     global perturbacion_inductiva
-    perturbacion_inductiva = 20
+    perturbacion_inductiva = amplitud_inductiva
 
 def aplicar_perturbacion_em():
     global perturbacion_electromagnetica
-    perturbacion_electromagnetica = -25
+    perturbacion_electromagnetica = amplitud_em
 
 def actualizar_kp(val):
     global Kp
     Kp = float(val)
 
+def actualizar_amplitud_ind(val):
+    global amplitud_inductiva
+    amplitud_inductiva = float(val)
+
+def actualizar_amplitud_em(val):
+    global amplitud_em
+    amplitud_em = float(val)
+
 # --- Animación de gráficos ---
 def animar(i):
-    window = 100
-    min_len = min(len(tiempo), len(salida_data), len(medicion_data), len(error_data),
-                  len(referencia_data), len(perturbacion_ind_data), len(perturbacion_em_data), window)
+    window = 2000  # Aumentamos ventana de tiempo
+    min_len = min(len(tiempo), window)
 
     t = tiempo[-min_len:]
 
@@ -83,7 +94,7 @@ def animar(i):
     axes[0].clear()
     axes[0].plot(t, medicion_data[-min_len:], color="blue")
     axes[0].set_title("Medición f(t)")
-    axes[0].set_ylim(150, 280)
+    axes[0].set_ylim(180, 260)
     axes[0].grid(True)
 
     # Salida y referencia
@@ -92,14 +103,17 @@ def animar(i):
     axes[1].plot(t, salida_data[-min_len:], color="green", label="Salida")
     axes[1].set_title("Salida y Referencia")
     axes[1].legend()
-    axes[1].set_ylim(150, 280)
+    axes[1].set_ylim(190, 250)
     axes[1].grid(True)
 
-    # Error
+    # Error con área ±8% de 220
     axes[2].clear()
-    axes[2].plot(t, error_data[-min_len:], color="red")
+    axes[2].plot(t, error_data[-min_len:], color="red", label="Error e(t)")
+    tolerancia = 0.08 * V_REF
+    axes[2].fill_between(t, -tolerancia, tolerancia, color='gray', alpha=0.3, label="±8% tolerancia")
     axes[2].set_title("Error e(t)")
-    axes[2].set_ylim(-100, 100)
+    axes[2].set_ylim(-20, 20)
+    axes[2].legend()
     axes[2].grid(True)
 
     # Perturbaciones
@@ -108,27 +122,45 @@ def animar(i):
     axes[3].plot(t, perturbacion_em_data[-min_len:], color="brown", label="Electromagnética")
     axes[3].set_title("Perturbaciones")
     axes[3].legend()
-    axes[3].set_ylim(-50, 50)
+    axes[3].set_ylim(-25, 25)
     axes[3].grid(True)
 
 # --- UI principal ---
 ventana = tk.Tk()
 ventana.title("Simulador de Estabilizador con Control Proporcional")
 
-# --- Controles superiores (Kp + botones) ---
+# --- Controles superiores ---
 frame_controles_superiores = ttk.Frame(ventana)
 frame_controles_superiores.pack(pady=10)
 
-# Slider Kp
+# Kp
 ttk.Label(frame_controles_superiores, text="Ganancia Kp:").pack(side=tk.LEFT)
 kp_slider = tk.Scale(frame_controles_superiores, from_=0.0, to=2.0, resolution=0.05,
-                     orient=tk.HORIZONTAL, length=200, command=actualizar_kp)
+                     orient=tk.HORIZONTAL, length=150, command=actualizar_kp)
 kp_slider.set(Kp)
 kp_slider.pack(side=tk.LEFT, padx=10)
 
 # Botones de perturbación
-ttk.Button(frame_controles_superiores, text="Perturbación Inductiva (+20V)", command=aplicar_perturbacion_inductiva).pack(side=tk.LEFT, padx=10)
-ttk.Button(frame_controles_superiores, text="Perturbación Electromagnética (-25V)", command=aplicar_perturbacion_em).pack(side=tk.LEFT, padx=10)
+ttk.Button(frame_controles_superiores, text="Pert. Inductiva", command=aplicar_perturbacion_inductiva).pack(side=tk.LEFT, padx=5)
+ttk.Button(frame_controles_superiores, text="Pert. EM", command=aplicar_perturbacion_em).pack(side=tk.LEFT, padx=5)
+
+# --- Sliders para amplitudes ---
+frame_amplitudes = ttk.Frame(ventana)
+frame_amplitudes.pack(pady=5)
+
+# Slider inductiva
+ttk.Label(frame_amplitudes, text="Amplitud Inductiva (+V):").pack(side=tk.LEFT)
+slider_ind = tk.Scale(frame_amplitudes, from_=0, to=50, resolution=1,
+                      orient=tk.HORIZONTAL, length=150, command=actualizar_amplitud_ind)
+slider_ind.set(amplitud_inductiva)
+slider_ind.pack(side=tk.LEFT, padx=5)
+
+# Slider electromagnética
+ttk.Label(frame_amplitudes, text="Amplitud EM (-V):").pack(side=tk.LEFT)
+slider_em = tk.Scale(frame_amplitudes, from_=-50, to=0, resolution=1,
+                     orient=tk.HORIZONTAL, length=150, command=actualizar_amplitud_em)
+slider_em.set(amplitud_em)
+slider_em.pack(side=tk.LEFT, padx=5)
 
 # --- Área de gráficos ---
 frame_graficos = ttk.Frame(ventana)
