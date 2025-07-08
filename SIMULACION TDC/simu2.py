@@ -3,6 +3,7 @@ from tkinter import ttk
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from tkinter import font
 import threading
 import time
 
@@ -17,6 +18,8 @@ amplitud_inductiva = 10
 amplitud_em = -10
 V_in = V_REF
 simulacion_pausada = False
+fusible_quemado = False
+microp_con_falla = False
 
 # Variables compartidas
 V_out = V_REF
@@ -39,6 +42,7 @@ retroalimentacion_data = []
 def simulador():
     global V_out, perturbacion_inductiva, perturbacion_electromagnetica
     global Kp, Kd, simulacion_pausada, V_in, prev_error
+    global fusible_quemado, microp_con_falla
 
     t = 0
     while True:
@@ -57,6 +61,33 @@ def simulador():
 
         f = V_out + perturbacion_total
         e = V_in - f
+
+        # -- Verificacion de condicion de falla --
+        umbral_error = 0.08 * V_REF
+        if abs(e) > umbral_error:
+            if f > V_in + umbral_error:
+                fusible_quemado = True
+                V_out = 0
+            elif f < V_in - umbral_error:
+                microp_con_falla = True
+                V_out = 0
+        
+        # Si hay falla, pongo la salida en 0
+        if fusible_quemado or microp_con_falla:
+            tiempo.append(t)
+            entrada_data.append(0)
+            error_data.append(e)
+            u_P_data.append(0)
+            u_D_data.append(0)
+            u_PD_data.append(0)
+            perturbacion_ind_data.append(d_ind)
+            perturbacion_em_data.append(d_em)
+            retroalimentacion_data.append(0)
+            t += DT
+            time.sleep(DT)
+            continue
+
+        # Si no hay falla, opero como antes
         de = (e - prev_error) / DT
         prev_error = e
 
@@ -113,6 +144,13 @@ def pausar_reanudar():
     global simulacion_pausada
     simulacion_pausada = not simulacion_pausada
     boton_pausa.config(text="Reanudar" if simulacion_pausada else "Pausar")
+
+def reiniciar_sistema():
+    global fusible_quemado, microp_con_falla, V_out, prev_error
+    fusible_quemado = False
+    microp_con_falla = False
+    V_out = V_REF
+    prev_error = 0
 
 # --- Animación ---
 def animar(i):
@@ -196,26 +234,37 @@ def animar(i):
 ventana_controles = tk.Tk()
 ventana_controles.title("Controles del Sistema")
 
+screen_width = ventana_controles.winfo_screenwidth()
+screen_height = ventana_controles.winfo_screenheight()
+
+w1 = int(screen_width * 0.8)
+h1 = int(screen_height * 0.8)
+
+ventana_controles.geometry(f"{w1}x{h1}")
+
 frame_izq = ttk.Frame(ventana_controles)
-frame_izq.pack(side=tk.LEFT, padx=10, pady=10)
+frame_izq.pack(side=tk.LEFT, padx=10, pady=10, expand=True, fill='both')
 
 frame_der = ttk.Frame(ventana_controles)
-frame_der.pack(side=tk.RIGHT, padx=10, pady=10)
+frame_der.pack(side=tk.RIGHT, padx=10, pady=10, expand=True, fill='both')
+
+slider_len = w1 * 0.3
+fuente_grande = ("Arial", int(h1 * 0.02))
 
 # Izquierda
-ttk.Label(frame_izq, text="Ganancia Kp:").pack()
+ttk.Label(frame_izq, text="Ganancia Kp:", font=fuente_grande).pack()
 kp_slider = tk.Scale(frame_izq, from_=0.0, to=2.0, resolution=0.05,
-                     orient=tk.HORIZONTAL, length=150, command=actualizar_kp)
+                     orient=tk.HORIZONTAL, length=slider_len, command=actualizar_kp)
 kp_slider.set(Kp)
 kp_slider.pack()
 
-ttk.Label(frame_izq, text="Ganancia Kd:").pack()
+ttk.Label(frame_izq, text="Ganancia Kd:", font=fuente_grande).pack()
 kd_slider = tk.Scale(frame_izq, from_=0.0025, to=0.0045, resolution=0.1,
-                     orient=tk.HORIZONTAL, length=150, command=actualizar_kd)
+                     orient=tk.HORIZONTAL, length=slider_len, command=actualizar_kd)
 kd_slider.set(Kd)
 kd_slider.pack()
 
-ttk.Label(frame_izq, text="Amplitud Inductiva (+V):").pack()
+ttk.Label(frame_izq, text="Amplitud Inductiva (+V):", font=fuente_grande).pack()
 slider_ind = tk.Scale(frame_izq, from_=0, to=30, resolution=1,
                       orient=tk.HORIZONTAL, length=150, command=actualizar_amplitud_ind)
 slider_ind.set(amplitud_inductiva)
@@ -224,13 +273,13 @@ slider_ind.pack()
 ttk.Button(frame_izq, text="Perturbación Inductiva", command=aplicar_perturbacion_inductiva).pack(pady=5)
 
 # Derecha
-ttk.Label(frame_der, text="Amplitud EM (-V):").pack()
+ttk.Label(frame_der, text="Amplitud EM (-V):", font=fuente_grande).pack()
 slider_em = tk.Scale(frame_der, from_=-30, to=0, resolution=1,
                      orient=tk.HORIZONTAL, length=150, command=actualizar_amplitud_em)
 slider_em.set(amplitud_em)
 slider_em.pack()
 
-ttk.Label(frame_der, text="Entrada V_in (215-225 V):").pack()
+ttk.Label(frame_der, text="Entrada V_in (215-225 V):", font=fuente_grande).pack()
 slider_vin = tk.Scale(frame_der, from_=215, to=225, resolution=0.5,
                       orient=tk.HORIZONTAL, length=150, command=actualizar_entrada)
 slider_vin.set(V_REF)
@@ -241,6 +290,8 @@ ttk.Button(frame_der, text="Perturbación EM", command=aplicar_perturbacion_em).
 boton_pausa = ttk.Button(ventana_controles, text="Pausar", command=pausar_reanudar)
 boton_pausa.pack(pady=5)
 
+ttk.Button(ventana_controles, text="Reiniciar sistema", command=reiniciar_sistema).pack(pady=5)
+
 # ==============================
 # Ventana 2: Gráficos
 # ==============================
@@ -248,16 +299,25 @@ boton_pausa.pack(pady=5)
 ventana_graficos = tk.Toplevel()
 ventana_graficos.title("Gráficos del Sistema")
 
+w2 = int(screen_width * 1.5)
+h2 = int(screen_height * 1.5)
+
+ventana_graficos.geometry(f"{w2}x{h2}")
+
 frame_graficos = ttk.Frame(ventana_graficos)
 frame_graficos.pack()
 
-fig, axes = plt.subplots(7, 1, figsize=(10, 16))
+dpi = 100
+fig_width = w2 / dpi
+fig_height = h2 / dpi
+
+fig, axes = plt.subplots(7, 1, figsize=(fig_width, fig_height))
 fig.tight_layout(pad=3.0)
 
 canvas = FigureCanvasTkAgg(fig, master=frame_graficos)
 canvas.get_tk_widget().pack()
 
-ani = animation.FuncAnimation(fig, animar, interval=100)
+ani = animation.FuncAnimation(fig, animar, interval=300)
 
 # --- Iniciar simulación en hilo separado ---
 hilo = threading.Thread(target=simulador, daemon=True)
