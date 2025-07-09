@@ -8,7 +8,7 @@ import time
 
 # --- Inicialización ---
 DT = 0.1
-Kp = 1.9
+Kp = 1.5
 Kd = 0.355
 
 V_in = 230  # valor inicial para que arranque controlando
@@ -151,12 +151,12 @@ def animar(i):
         idx_ini = -puntos_ventana
 
     datos = [
-        (u_PD_data, "Control PD", "purple", -10, 10),
-        (u_P_data, "Control Proporcional", "blue", -5, 5),
-        (u_D_data, "Control Derivativo", "orange", -5, 5),
+        (u_PD_data, "Control PD", "purple", -70, 70),
+        (u_P_data, "Control Proporcional", "blue", -25, 25),
+        (u_D_data, "Control Derivativo", "orange", -40, 40),
         (entrada_data, "Salida del sistema", "green", 190, 250),
         (error_data, "Error e(t)", "red", -20, 20),
-        (None, "Perturbaciones", None, -40, 40),
+        (None, "Perturbaciones", None, -200, 200),
         (retroalimentacion_data, "Retroalimentacion", "orange", 200, 240),
     ]
 
@@ -202,12 +202,12 @@ kd_slider.set(Kd)
 kd_slider.pack()
 
 ttk.Label(frame_controles, text="Amplitud Inductiva").pack()
-slider_ind = tk.Scale(frame_controles, from_=0, to=30, resolution=1, orient=tk.HORIZONTAL, command=actualizar_amplitud_ind)
+slider_ind = tk.Scale(frame_controles, from_=50, to=200, resolution=1, orient=tk.HORIZONTAL, command=actualizar_amplitud_ind)
 slider_ind.set(amplitud_inductiva)
 slider_ind.pack()
 
 ttk.Label(frame_controles, text="Amplitud EM").pack()
-slider_em = tk.Scale(frame_controles, from_=-30, to=0, resolution=1, orient=tk.HORIZONTAL, command=actualizar_amplitud_em)
+slider_em = tk.Scale(frame_controles, from_=-200, to=-50, resolution=1, orient=tk.HORIZONTAL, command=actualizar_amplitud_em)
 slider_em.set(amplitud_em)
 slider_em.pack()
 
