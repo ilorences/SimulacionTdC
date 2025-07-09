@@ -56,22 +56,7 @@ def simulador():
         perturbacion_electromagnetica = 0
 
         f = V_out
-        e = V_REF - f
-
-        umbral_error = 0.08 * V_REF
-        if abs(e) > umbral_error:
-            if f > V_REF + umbral_error:
-                fusible_quemado = True
-                V_out = 0
-            elif f < V_REF - umbral_error:
-                microp_con_falla = True
-                V_out = 0
-
-        if fusible_quemado or microp_con_falla:
-            guardar_datos(t, e, 0, 0, 0, d_ind, d_em, 0)
-            t += DT
-            time.sleep(DT)
-            continue
+        e = V_in - f
 
         de = (e - prev_error) / DT
         prev_error = e
@@ -83,10 +68,24 @@ def simulador():
         V_out += (u_PD + perturbacion_total) * DT
         V_out = max(min(V_out, 250), 190)
 
+        umbral_error = 0.08 * V_in
+        if abs(e) > umbral_error:
+            if f > V_in + umbral_error:
+                fusible_quemado = True
+                V_out = 0
+            elif f < V_in - umbral_error:
+                microp_con_falla = True
+                V_out = 0
+
+        if fusible_quemado or microp_con_falla:
+            guardar_datos(t, e, 0, 0, 0, d_ind, d_em, 0)
+            t += DT
+            time.sleep(DT)
+            continue
+
         guardar_datos(t, e, u_P, u_D, u_PD, d_ind, d_em, f)
         t += DT
         time.sleep(DT)
-
 
 def guardar_datos(t, e, u_P, u_D, u_PD, d_ind, d_em, f):
     tiempo.append(t)
@@ -156,7 +155,7 @@ def animar(i):
         (u_PD_data, "Control PD", "purple", -10, 10),
         (u_P_data, "Control Proporcional", "blue", -5, 5),
         (u_D_data, "Control Derivativo", "orange", -5, 5),
-        (entrada_data, "Entrada", "green", 190, 250),
+        (entrada_data, "Salida del sistema", "green", 190, 250),
         (error_data, "Error e(t)", "red", -20, 20),
         (None, "Perturbaciones", None, -40, 40),
         (retroalimentacion_data, "Retroalimentacion", "orange", 200, 240),
@@ -176,10 +175,10 @@ def animar(i):
         ax.legend()
         ax.grid(True)
 
-        if label == "f(t) = V_out":
-            ax.axhline(V_REF, color='black', linestyle='--', label='Referencia')
-            lim_inf = V_REF - 0.08 * V_REF
-            lim_sup = V_REF + 0.08 * V_REF
+        if label == "Salida del sistema":
+            ax.axhline(V_in, color='black', linestyle='--', label='Referencia')
+            lim_inf = V_in - 0.08 * V_in
+            lim_sup = V_in + 0.08 * V_in
             ax.fill_between(t, lim_inf, lim_sup, color='gray', alpha=0.3, label="Banda ±8%")
 
 # --- Interfaz ---
