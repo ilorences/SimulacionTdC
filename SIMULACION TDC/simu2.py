@@ -7,10 +7,9 @@ import threading
 import time
 
 # --- Inicialización ---
-V_REF = 220
 DT = 0.1
-Kp = 0.5
-Kd = 0.045
+Kp = 1.9
+Kd = 0.355
 
 V_in = 230  # valor inicial para que arranque controlando
 V_out = 230  # corregido: que arranque en 230 para que se vea la corrección
