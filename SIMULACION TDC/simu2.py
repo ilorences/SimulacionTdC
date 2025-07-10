@@ -135,7 +135,7 @@ def reiniciar_sistema():
     global fusible_quemado, microp_con_falla, V_out, prev_error
     fusible_quemado = False
     microp_con_falla = False
-    V_out = 230  # mantener coherencia en reinicio
+    V_out = V_in  # mantener coherencia en reinicio
     prev_error = 0
 
 # --- Animación ---
@@ -150,14 +150,16 @@ def animar(i):
         t = tiempo[-puntos_ventana:]
         idx_ini = -puntos_ventana
 
+    # Nuevo orden: izquierda: PD, P, D, Perturbaciones / derecha: Error, Salida, Retroalimentación, (vacío)
     datos = [
         (u_PD_data, "Control PD", "purple", -70, 70),
-        (u_P_data, "Control Proporcional", "blue", -25, 25),
-        (u_D_data, "Control Derivativo", "orange", -40, 40),
-        (entrada_data, "Salida del sistema", "green", 190, 250),
         (error_data, "Error e(t)", "red", -20, 20),
-        (None, "Perturbaciones", None, -200, 200),
-        (retroalimentacion_data, "Retroalimentacion", "orange", 200, 240),
+        (u_P_data, "Control Proporcional", "blue", -25, 25),
+        (entrada_data, "Salida del sistema", "green", 190, 250),
+        (u_D_data, "Control Derivativo", "orange", -40, 40), 
+        (retroalimentacion_data, "Retroalimentación", "orange", 200, 240),
+        (None, "Perturbaciones", None, -200, 200), 
+        (None, "", None, 0, 1),  # espacio en blanco
     ]
 
     for i, (data, label, color, ymin, ymax) in enumerate(datos):
@@ -166,7 +168,7 @@ def animar(i):
         ax.clear()
         if data:
             ax.plot(t, data[idx_ini:], label=label, color=color)
-        else:
+        elif label == "Perturbaciones":
             ax.plot(t, perturbacion_ind_data[idx_ini:], label="Inductiva", color="purple")
             ax.plot(t, perturbacion_em_data[idx_ini:], label="Electromagnética", color="brown")
         ax.set_ylim(ymin, ymax)
@@ -180,49 +182,64 @@ def animar(i):
             lim_sup = V_in + 0.08 * V_in
             ax.fill_between(t, lim_inf, lim_sup, color='gray', alpha=0.3, label="Banda ±8%")
 
+
 # --- Interfaz ---
 ventana = tk.Tk()
 ventana.title("Simulador con Gráficos en 2 Columnas")
+ventana.configure(bg="#f2f2f2")  # fondo claro
 
 frame_graficos = ttk.Frame(ventana)
 frame_graficos.pack(side=tk.RIGHT)
 
-frame_controles = ttk.Frame(ventana)
+frame_controles = ttk.Frame(ventana, padding=10)
 frame_controles.pack(side=tk.LEFT, fill='y', padx=10, pady=10)
 
-# Sliders y botones
-ttk.Label(frame_controles, text="Kp").pack()
-kp_slider = tk.Scale(frame_controles, from_=0.0, to=2.0, resolution=0.05, orient=tk.HORIZONTAL, command=actualizar_kp)
-kp_slider.set(Kp)
-kp_slider.pack()
+# --- Sliders ---
+seccion_sliders = ttk.LabelFrame(frame_controles, text="Parámetros de Control", padding=10)
+seccion_sliders.pack(fill='x', pady=5)
 
-ttk.Label(frame_controles, text="Kd").pack()
-kd_slider = tk.Scale(frame_controles, from_=0.0, to=1, resolution=0.005, orient=tk.HORIZONTAL, command=actualizar_kd)
-kd_slider.set(Kd)
-kd_slider.pack()
+def crear_slider_con_valor(frame, texto, from_, to, initial, command, resolution=0.01):
+    contenedor = ttk.Frame(frame)
+    contenedor.pack(fill='x', pady=3)
 
-ttk.Label(frame_controles, text="Amplitud Inductiva").pack()
-slider_ind = tk.Scale(frame_controles, from_=50, to=200, resolution=1, orient=tk.HORIZONTAL, command=actualizar_amplitud_ind)
-slider_ind.set(amplitud_inductiva)
-slider_ind.pack()
+    ttk.Label(contenedor, text=texto).pack(anchor='w')
 
-ttk.Label(frame_controles, text="Amplitud EM").pack()
-slider_em = tk.Scale(frame_controles, from_=-200, to=-50, resolution=1, orient=tk.HORIZONTAL, command=actualizar_amplitud_em)
-slider_em.set(amplitud_em)
-slider_em.pack()
+    val_label = ttk.Label(contenedor, text=f"{initial:.2f}")
+    val_label.pack(anchor='e')
 
-ttk.Label(frame_controles, text="V_in").pack()
-slider_vin = tk.Scale(frame_controles, from_=210, to=240, resolution=0.5, orient=tk.HORIZONTAL, command=actualizar_entrada)
-slider_vin.set(V_in)
-slider_vin.pack()
+    def actualizar_valor(val):
+        val_label.config(text=f"{float(val):.2f}")
+        command(val)
 
-ttk.Button(frame_controles, text="Perturbación Inductiva", command=aplicar_perturbacion_inductiva).pack(pady=5)
-ttk.Button(frame_controles, text="Perturbación EM", command=aplicar_perturbacion_em).pack(pady=5)
+    slider = ttk.Scale(contenedor, from_=from_, to=to, orient="horizontal",
+                       command=actualizar_valor)
+    slider.set(initial)
+    slider.pack(fill='x')
+    return slider
 
-boton_pausa = ttk.Button(frame_controles, text="Pausar", command=pausar_reanudar)
-boton_pausa.pack(pady=5)
+kp_slider = crear_slider_con_valor(seccion_sliders, "Kp:", 0.0, 2.0, Kp, actualizar_kp, resolution=0.05)
+kd_slider = crear_slider_con_valor(seccion_sliders, "Kd:", 0.0, 1.0, Kd, actualizar_kd, resolution=0.005)
+slider_vin = crear_slider_con_valor(seccion_sliders, "V_in:", 210, 240, V_in, actualizar_entrada, resolution=10)
 
-ttk.Button(frame_controles, text="Reiniciar", command=reiniciar_sistema).pack(pady=5)
+seccion_perturbaciones = ttk.LabelFrame(frame_controles, text="Perturbaciones", padding=10)
+seccion_perturbaciones.pack(fill='x', pady=5)
+
+slider_ind = crear_slider_con_valor(seccion_perturbaciones, "Amplitud Inductiva:", 50, 200, amplitud_inductiva, actualizar_amplitud_ind)
+slider_em = crear_slider_con_valor(seccion_perturbaciones, "Amplitud EM:", -200, -50, amplitud_em, actualizar_amplitud_em)
+
+
+# --- Botones ---
+seccion_botones = ttk.LabelFrame(frame_controles, text="Acciones", padding=10)
+seccion_botones.pack(fill='x', pady=5)
+
+ttk.Button(seccion_botones, text="Aplicar Inductiva", command=aplicar_perturbacion_inductiva).pack(fill='x', pady=2)
+ttk.Button(seccion_botones, text="Aplicar EM", command=aplicar_perturbacion_em).pack(fill='x', pady=2)
+
+boton_pausa = ttk.Button(seccion_botones, text="Pausar", command=pausar_reanudar)
+boton_pausa.pack(fill='x', pady=2)
+
+ttk.Button(seccion_botones, text="Reiniciar", command=reiniciar_sistema).pack(fill='x', pady=2)
+
 
 # --- Gráficos ---
 fig, axes = plt.subplots(4, 2, figsize=(14, 10))
