@@ -177,7 +177,7 @@ frame_controles.pack(side=tk.LEFT, fill='y', padx=10, pady=10)
 seccion_sliders = ttk.LabelFrame(frame_controles, text="Parámetros de Control", padding=10)
 seccion_sliders.pack(fill='x', pady=5)
 
-def crear_slider_con_valor(frame, texto, from_, to, initial, command, resolution=0.01, fmt="{:.2f}"):
+def crear_slider_con_valor(frame, texto, from_, to, initial, command, resolution, fmt="{:.2f}"):
     contenedor = ttk.Frame(frame)
     contenedor.pack(fill='x', pady=3)
 
@@ -190,8 +190,8 @@ def crear_slider_con_valor(frame, texto, from_, to, initial, command, resolution
         val_label.config(text=fmt.format(float(val)))
         command(val)
 
-    slider = ttk.Scale(contenedor, from_=from_, to=to, orient="horizontal",
-                       command=actualizar_valor)
+    slider = tk.Scale(contenedor, from_=from_, to=to, resolution=resolution, orient="horizontal",
+                      command=actualizar_valor)
     slider.set(initial)
     slider.pack(fill='x')
     return slider
@@ -200,8 +200,8 @@ def crear_slider_con_valor(frame, texto, from_, to, initial, command, resolution
 kp_slider = crear_slider_con_valor(seccion_sliders, "Kp:", 0.0, 2.0, Kp, actualizar_kp, resolution=0.05)
 kd_slider = crear_slider_con_valor(seccion_sliders, "Kd:", 0.0, 1.0, Kd, actualizar_kd, resolution=0.005)
 
-# V_in: saltos de 10
-slider_vin = crear_slider_con_valor(seccion_sliders, "V_in:", 210, 240, V_in, actualizar_entrada, resolution=10, fmt="{:.0f}")
+# V_in: saltos de 5
+slider_vin = crear_slider_con_valor(seccion_sliders, "V_in:", 210, 230, V_in, actualizar_entrada, resolution=5, fmt="{:.0f}")
 
 # --- Perturbaciones ---
 seccion_perturbaciones = ttk.LabelFrame(frame_controles, text="Perturbaciones", padding=10)
